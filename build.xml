@@ -10,6 +10,15 @@
 <project name="ProyectoFinalGP2-2025I" default="default" basedir=".">
     <description>Builds, tests, and runs the project ProyectoFinalGP2-2025I.</description>
     <import file="nbproject/build-impl.xml"/>
+
+    <target name="verificar" depends="jar,test" description="Construye el JAR y verifica el flujo de operaciones"/>
+
+    <target name="-post-test-run" if="have.tests">
+        <java classname="VistaControl.FlujoAgenciaTest" fork="true" failonerror="true">
+            <classpath path="${run.test.classpath}"/>
+        </java>
+    </target>
+
     <!--
 
     There exist several targets which are by default empty and which can be 

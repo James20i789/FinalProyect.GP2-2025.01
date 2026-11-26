@@ -1,29 +1,21 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package MODEL;
 
-/**
- *
- * @JK James Rios
- */
-public class Clientes {
-    int dni;
-    String nombre,apellidos,direccion;
-
-    public Clientes(int dni, String nombre, String apellidos, String direccion) {
-        this.dni = dni;
-        this.nombre = nombre;
-        this.apellidos = apellidos;
-        this.direccion = direccion;
+public record Clientes(String dni, String nombre, String apellidos, String direccion) {
+    public Clientes {
+        if (!dni.matches("[0-9]{8}")) {
+            throw new IllegalArgumentException("El DNI debe tener ocho dígitos.");
+        }
+        nombre = Vuelos.texto(nombre);
+        apellidos = Vuelos.texto(apellidos);
+        direccion = Vuelos.texto(direccion);
     }
 
-    public int getDni() {
-        return dni;
+    public String nombreCompleto() {
+        return nombre + " " + apellidos;
     }
+
     @Override
     public String toString() {
-        return nombre + " " + apellidos + " | DNI: " + dni + " | Dirección: " + direccion;
+        return nombreCompleto() + " | DNI " + dni + " | " + direccion;
     }
 }

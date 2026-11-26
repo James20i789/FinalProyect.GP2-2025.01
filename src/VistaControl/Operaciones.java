@@ -1,234 +1,162 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package VistaControl;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.PrintWriter;
 import MODEL.Clientes;
 import MODEL.Ventas;
 import MODEL.Vuelos;
-import UTIL.Lectura;
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.Instant;
+import java.util.Locale;
+import java.util.Set;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
-/**
- *
- * @JK James Rios
- */
-public class Operaciones {
+final class Operaciones {
+    private static final Pattern NUMERO_HISTORICO = Pattern.compile("(?m)^N° de Venta\\h*:\\h*(.+)$");
+    private final ArchivoAgencia archivo;
+    private final String historico;
+    private final Set<String> numerosHistoricos;
+    private ArchivoAgencia.Estado estado;
 
-    static Lectura JK = new Lectura();
-    static Vuelos[] vuelo = new Vuelos[100];
-    static Clientes[] cliente = new Clientes[100];
-    static Ventas[] ventas = new Ventas[100];
-    static int vuelosIndex = 0, clientesIndex = 0, ventasIndex = 0;
+    Operaciones(ArchivoAgencia archivo, Path ventaHistorica) throws IOException {
+        this.archivo = archivo;
+        estado = archivo.cargar();
+        historico = Files.notExists(ventaHistorica) ? "" : Files.readString(ventaHistorica);
+        numerosHistoricos = NUMERO_HISTORICO.matcher(historico).results()
+                .map(m -> m.group(1).strip().toUpperCase(Locale.ROOT)).collect(Collectors.toUnmodifiableSet());
+    }
 
-    // GESTIÓN DE VUELOS
-    public static void crearVuelos() {
-        System.out.print("Número de vuelos a registrar: ");
-        int n = JK.entero();
-        for (int i = 0; i < n; i++) {
-            System.out.println("\nVuelo " + (i + 1));
-            System.out.print("NÚMERO: ");
-            String numero = JK.cadena();
+    private void confirmar(ArchivoAgencia.Estado cambio) throws IOException {
+        archivo.guardar(cambio);
+        estado = cambio;
+    }
 
-            System.out.print("ORIGEN: ");
-            String origen = JK.cadena();
+    void guardarVuelo(Vuelos vuelo, boolean actualizar) throws IOException {
+        comprobarExistencia(estado.vuelos().containsKey(vuelo.numero()), actualizar, "vuelo");
+        if (vuelo.capacidad() < estado.ocupados(vuelo.numero())) {
+            throw new IllegalArgumentException("La capacidad no puede ser menor que los asientos vendidos.");
+        }
+        var cambio = estado.copia();
+        cambio.vuelos().put(vuelo.numero(), vuelo);
+        confirmar(cambio);
+    }
 
-            System.out.print("DESTINO: ");
-            String destino = JK.cadena();
+    void eliminarVuelo(String numero) throws IOException {
+        String id = vuelo(numero).numero();
+        if (estado.ocupados(id) > 0) {
+            throw new IllegalArgumentException("El vuelo tiene ventas activas.");
+        }
+        var cambio = estado.copia();
+        cambio.vuelos().remove(id);
+        confirmar(cambio);
+    }
 
-            System.out.print("COSTO: ");
-            double costo = JK.decimal();
+    Vuelos vuelo(String numero) {
+        Vuelos vuelo = estado.vuelos().get(Vuelos.codigo(numero));
+        comprobarExistencia(vuelo != null, true, "vuelo");
+        return vuelo;
+    }
 
-            System.out.print("ASIENTOS: ");
-            int asientos = JK.entero();
+    long disponibles(Vuelos vuelo) {
+        return vuelo.capacidad() - estado.ocupados(vuelo.numero());
+    }
 
-            vuelo[vuelosIndex++] = new Vuelos(numero, origen, destino, costo, asientos);
+    void listarVuelos() {
+        if (estado.vuelos().isEmpty()) {
+            System.out.println("No hay vuelos registrados.");
+        }
+        for (Vuelos v : estado.vuelos().values()) {
+            System.out.printf("%s | %s → %s | $%s | %d/%d libres%n",
+                    v.numero(), v.origen(), v.destino(), v.precio(), disponibles(v), v.capacidad());
         }
     }
 
-    public static void verVuelos() {
-        if (vuelosIndex > 0) {
-            System.out.println(" ----- |VUELOS REGISTRADOS| ----");
-            for (int i = 0; i < vuelosIndex; i++) {
-                System.out.println(vuelo[i]);
-            }
-        } else {
-            System.out.println("NO SE ENCONTRARON VUELOS DISPONIBLES");
-        }
+    void guardarCliente(Clientes cliente, boolean actualizar) throws IOException {
+        comprobarExistencia(estado.clientes().containsKey(cliente.dni()), actualizar, "cliente");
+        var cambio = estado.copia();
+        cambio.clientes().put(cliente.dni(), cliente);
+        confirmar(cambio);
     }
 
-    public static void actualizarVuelo() {
-        System.out.print("Código del vuelo a actualizar: ");
-        String cod = JK.cadena();
-        for (int i = 0; i < vuelosIndex; i++) {
-            if (vuelo[i].getNumeroVuelo().equals(cod)) {
-                System.out.print("NUEVO ORIGEN: ");
-                String origen = JK.cadena();
-
-                System.out.print("NUEVO DESTINO: ");
-                String destino = JK.cadena();
-
-                System.out.print("NUEVO COSTO: ");
-                double costo = JK.decimal();
-
-                System.out.print("NUEVOS ASIENTOS: ");
-                int asientos = JK.entero();
-
-                vuelo[i] = new Vuelos(cod, origen, destino, costo, asientos);
-                System.out.println("Vuelo actualizado.");
-                return;
-            }
-        }
-        System.out.println("VUELO NO ENCONTRADO.");
+    Clientes cliente(String dni) {
+        Clientes cliente = estado.clientes().get(dni.strip());
+        comprobarExistencia(cliente != null, true, "cliente");
+        return cliente;
     }
 
-    public static void eliminarVuelo() {
-        verVuelos();
-        System.out.print("\nNúmero de vuelo a eliminar: ");
-        String cod = JK.cadena();
-        for (int i = 0; i < vuelosIndex; i++) {
-            if (vuelo[i].getNumeroVuelo().equals(cod)) {
-                vuelo[i] = vuelo[--vuelosIndex];
-                System.out.println("Vuelo eliminado.");
-                return;
-            }
+    void eliminarCliente(String dni) throws IOException {
+        String id = cliente(dni).dni();
+        if (estado.ventas().values().stream().anyMatch(v -> v.activa() && v.dni().equals(id))) {
+            throw new IllegalArgumentException("El cliente tiene ventas activas.");
         }
-        System.out.println("VUELO NO ENCONTRADO.");
+        var cambio = estado.copia();
+        cambio.clientes().remove(id);
+        confirmar(cambio);
     }
 
-    // GESTIÓN DE CLIENTES
-    public static void crearCliente() {
-        System.out.print("Cantidad de clientes a registrar: ");
-        int n = JK.entero();
-        for (int i = 0; i < n; i++) {
-            System.out.println("\nCliente " + (i + 1));
-            System.out.print("Nombre: ");
-            String nombre = JK.cadena();
-            System.out.print("Apellidos: ");
-            String apellido = JK.cadena();
-            System.out.print("DNI: ");
-            int dni = JK.entero();
-            System.out.print("Dirección: ");
-            String direccion = JK.cadena();
-            cliente[clientesIndex++] = new Clientes(dni, nombre, apellido, direccion);
+    void listarClientes() {
+        if (estado.clientes().isEmpty()) {
+            System.out.println("No hay clientes registrados.");
         }
-    }
-    public static void verCliente() {
-            if (clientesIndex > 0) {
-            System.out.println(" ----- CLIENTES REGISTRADOS -----");
-            for (int i = 0; i < clientesIndex; i++) {
-                System.out.println(cliente[i].toString());
-            }
-        } else {
-            System.out.println("No hay clientes disponibles");
-        }
+        estado.clientes().values().forEach(System.out::println);
     }
 
-
-    public static void actualizarCliente() {
-       System.out.print("DNI del cliente a actualizar: ");
-        int Dni = JK.entero();
-        for (int i = 0; i < clientesIndex; i++) {
-            if (cliente[i].getDni() == Dni) {
-                System.out.print("Nuevo nombre: ");
-                String nombre = JK.cadena();
-                System.out.print("Nuevos apellidos: ");
-                String apellido = JK.cadena();
-                System.out.print("Nueva dirección: ");
-                String direccion = JK.cadena();
-                cliente[i] = new Clientes(Dni, nombre, apellido, direccion);
-                System.out.println("Cliente actualizado.");
-                return;
-            }
+    Ventas vender(String numero, String dni, String vuelo, int cantidad) throws IOException {
+        String id = Vuelos.codigo(numero);
+        if (estado.ventas().containsKey(id) || numerosHistoricos.contains(id)) {
+            throw new IllegalArgumentException("El número de venta ya existe.");
         }
-        System.out.println("Cliente no encontrado.");
+        Clientes c = cliente(dni);
+        Vuelos v = vuelo(vuelo);
+        if (cantidad < 1 || cantidad > disponibles(v)) {
+            throw new IllegalArgumentException("La cantidad excede los asientos disponibles.");
+        }
+        Ventas venta = new Ventas(id, c.dni(), c.nombreCompleto(), v.numero(), v.origen(), v.destino(),
+                v.precio(), cantidad, Instant.now(), null);
+        var cambio = estado.copia();
+        cambio.ventas().put(id, venta);
+        confirmar(cambio);
+        return venta;
     }
 
-    public static void eliminarCliente() {
-        System.out.print("DNI del cliente a eliminar: ");
-        int Dni = JK.entero();
-        for (int i = 0; i < clientesIndex; i++) {
-            if (cliente[i].getDni()== Dni) {
-                cliente[i] = cliente[--clientesIndex];
-                System.out.println("Cliente eliminado.");
-                return;
-            }
+    void anular(String numero) throws IOException {
+        String id = Vuelos.codigo(numero);
+        Ventas venta = estado.ventas().get(id);
+        if (venta == null || !venta.activa()) {
+            throw new IllegalArgumentException("No existe una venta activa con ese número.");
         }
-        System.out.println("Cliente no encontrado.");
+        var cambio = estado.copia();
+        Instant ahora = Instant.now();
+        cambio.ventas().put(id, venta.anular(ahora.isBefore(venta.fecha()) ? venta.fecha() : ahora));
+        confirmar(cambio);
     }
 
-    // GESTIÓN DE VENTAS
-    public static void generarVenta() {
-        System.out.print("DNI del cliente: ");
-        int dni = JK.entero();
-
-        Clientes c = null;
-        for (int i = 0; i < clientesIndex; i++) {
-            int Dni=0;
-            if (cliente[i].getDni()== Dni) {
-                c = cliente[i];
-                break;
-            }
+    String historial() {
+        String actual = estado.ventas().values().stream().map(Ventas::boleta).collect(Collectors.joining("\n"));
+        if (historico.isBlank()) {
+            return actual;
         }
-        if (c == null) {
-            System.out.println("Cliente no encontrado.");
-            return;
-        }
-
-        System.out.print("Número de vuelo: ");
-        String cod = JK.cadena();
-        Vuelos v = null;
-        for (int i = 0; i < vuelosIndex; i++) {
-            if (vuelo[i].getNumeroVuelo().equals(cod)) {
-                v = vuelo[i];
-                break;
-            }
-        }
-        if (v == null) {
-            System.out.println("Vuelo no encontrado.");
-            return;
-        }
-
-        if (v.getAsientosDisponibles() <= 0) {
-            System.out.println("No hay asientos disponibles.");
-            return;
-        }
-
-        System.out.print("Número de venta: ");
-        String nro = JK.cadena();
-
-        ventas[ventasIndex++] = new Ventas(v, c, nro, 1);
-        v.venderAsiento();
-        System.out.println("FELICIDADES. Venta realizada.");
-
-        try {
-            FileWriter archivo = new FileWriter("venta.txt", true); // true = agregar al final
-            PrintWriter escritor = new PrintWriter(archivo);
-            escritor.println(ventas[ventasIndex - 1].toString()); // usa el toString formateado como boleta
-            escritor.println(); // línea en blanco entre boletas
-            escritor.close();
-            System.out.println("< Boleta guardada en venta.txt >");
-        } catch (IOException e) {
-            System.out.println("Error al guardar la boleta: " + e.getMessage());
-        }
+        return actual + "\n=== ARCHIVO HISTÓRICO (SOLO CONSULTA) ===\n" + historico;
     }
 
-    public static void verVenta() {
-        System.out.println("================== HISTORIAL DE VENTAS ================");
-        try {
-            BufferedReader lector = new BufferedReader(new FileReader("venta.txt"));
-            String linea;
-            while ((linea = lector.readLine()) != null) {
-                System.out.println(linea);
-            }
-            lector.close();
-        } catch (IOException e) {
-            System.out.println("Error al leer las ventas: " + e.getMessage());
+    Path exportar() throws IOException {
+        return archivo.exportar(historial());
+    }
+
+    void resumen() {
+        var activas = estado.ventas().values().stream().filter(Ventas::activa).toList();
+        long boletos = activas.stream().mapToLong(Ventas::cantidad).sum();
+        BigDecimal ingresos = activas.stream().map(Ventas::total).reduce(new BigDecimal("0.00"), BigDecimal::add);
+        System.out.printf("Vuelos: %d | Clientes: %d%n", estado.vuelos().size(), estado.clientes().size());
+        System.out.printf("Ventas activas: %d | Anuladas: %d | Boletos activos: %d | Importe activo: $%s%n",
+                activas.size(), estado.ventas().size() - activas.size(), boletos, ingresos);
+    }
+
+    private static void comprobarExistencia(boolean existe, boolean esperado, String entidad) {
+        if (existe != esperado) {
+            throw new IllegalArgumentException(esperado ? "No se encontró el " + entidad + "." : "Ya existe un " + entidad + " con ese identificador.");
         }
     }
 }

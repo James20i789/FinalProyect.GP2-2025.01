@@ -1,19 +1,25 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Main.java to edit this template
- */
 package VistaControl;
 
-/**
- *
- * @JK James Rios
- */
+import UTIL.Lectura;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.util.NoSuchElementException;
+
 public class INDEX {
-
-    private static Menu JK = new Menu();
     public static void main(String[] args) {
-    JK.validar();
+        Lectura entrada = new Lectura();
+        try {
+            if (!Menu.validar(entrada)) {
+                return;
+            }
+            Path datos = Path.of(args.length == 0 ? "datos" : args[0]);
+            try (ArchivoAgencia archivo = new ArchivoAgencia(datos)) {
+                new Menu(entrada, new Operaciones(archivo, Path.of("venta.txt"))).principal();
+            }
+        } catch (NoSuchElementException e) {
+            System.out.println("\nEntrada finalizada. Los cambios confirmados se conservan.");
+        } catch (IOException e) {
+            System.err.println("No se pudo abrir o cerrar la agencia: " + e.getMessage());
+        }
     }
-    
 }
-
