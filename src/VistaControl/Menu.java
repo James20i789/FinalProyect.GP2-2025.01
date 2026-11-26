@@ -1,191 +1,207 @@
-    /*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package VistaControl;
 
+import MODEL.Clientes;
+import MODEL.Vuelos;
 import UTIL.Lectura;
+import java.io.IOException;
+import java.util.Arrays;
 
-/**
- *
- * @JK James Rios
- */
-public class Menu {
-    
-    private static Lectura JK = new Lectura();
-    private static Operaciones op = new Operaciones();
-    private static int intentos = 0;
-    private static boolean acceso = false;
-    
-    //Login situation. Entrada
-    public static void validar() {
-        do {
-            System.out.print("USER: ");
-            String user = JK.cadena();
-            System.out.print("PASSWORD: ");
-            String pass = JK.cadena();
-            if (user.equals("James") && pass.equals("202512003")) {
-                acceso = true;
-                System.out.println("\n><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>");
-                System.out.println("              |BIENVENIDO A UNIONSHOP MARKET - AGENCY|         ");
-                System.out.println("><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>");
-                System.out.println("-----------------------------------------------------------------------");
-                System.out.println(" |USUARIO| " + user);
-                menu_opcion_principal();
-                break;
-            } else {
-                System.out.println(" ------ |CREDENCIALES INCORRECTAS| ------- ");
-                intentos++;
-            }
-        } while (intentos < 3);
+final class Menu {
+    private final Lectura entrada;
+    private final Operaciones operaciones;
 
-        if (!acceso) {
-            System.out.println("------ ACCESO DENEGADO: Programa finalizado. ------");
-            JK.cerrar();
+    Menu(Lectura entrada, Operaciones operaciones) {
+        this.entrada = entrada;
+        this.operaciones = operaciones;
+    }
+
+    static boolean validar(Lectura entrada) {
+        String usuario = System.getenv("AGENCIA_USUARIO");
+        String clave = System.getenv("AGENCIA_CLAVE");
+        if (usuario == null || usuario.isBlank() || clave == null || clave.isBlank()) {
+            System.err.println("Configure AGENCIA_USUARIO y AGENCIA_CLAVE antes de iniciar.");
+            return false;
         }
-        
-    }
-    //MENÚ de OPCIONES - FORMATO PRINCIPAL
-    public static void menu_opcion_principal() {
-        int opcion;
-        do {
-            System.out.println("\n=============================================");
-            System.out.println(" -------------- MENU PRINCIPAL ------------ ");
-            System.out.println("==============================================");
-            System.out.println("1. Registrar vuelo");
-            System.out.println("2. Registrar cliente");
-            System.out.println("3. Registrar venta");
-            System.out.println("4. Salir");
-            System.out.println("  MAIN MENU SELECTION   |1-4|: ");
-            opcion = JK.entero();
 
-            switch (opcion) {
-                case 1:
-                    menuVuelos();
-                    break;
-                case 2:
-                    menuClientes();
-                    break;
-                case 3:
-                    menuVentas();
-                    break;
-                case 4:
-                    System.out.println(" ---------- |MUCHAS GRACIAS POR USAR EL SISTEMA. HASTA LUEGO| ------");
-                    break;
-                default:
-                    System.out.println("Opción no válida. Intentar nuevamente.");
-                   JK.cerrar();
+        char[] esperada = clave.toCharArray();
+        try {
+            return autenticar(entrada, usuario, esperada);
+        } finally {
+            Arrays.fill(esperada, '\0');
+        }
+    }
+
+    private static boolean autenticar(Lectura entrada, String usuario, char[] esperada) {
+        for (int intento = 0; intento < 3; intento++) {
+            String candidato = entrada.linea("Usuario: ");
+            char[] contrasena = entrada.contrasena("Contraseña: ");
+            boolean coincide = usuario.equals(candidato) && Arrays.equals(esperada, contrasena);
+            Arrays.fill(contrasena, '\0');
+            if (coincide) {
+                System.out.println("\nUNIONSHOP MARKET - AGENCY");
+                return true;
             }
-        } while (opcion != 4);
-
-       
-
+            System.out.println("Credenciales incorrectas.");
+        }
+        System.out.println("Acceso denegado.");
+        return false;
     }
-    //MENÚ - VUELOS
-    private static void menuVuelos() {
-        int opV;
-        do {
-            System.out.println("\n======================================");
-            System.out.println("---------------- VUELOS --------------");
-            System.out.println("=======================================");
-            System.out.println("1. Crear");
-            System.out.println("2. Ver");
-            System.out.println("3. Eliminar");
-            System.out.println("4. Actualizar");
-            System.out.println("5. Volver");
-            System.out.println("  MAIN MENU SELECTION - VUELOS  |1-5|: ");
-            opV = JK.entero();
 
-            switch (opV) {
-                case 1:
-                    op.crearVuelos();
-
-                    break;
-                case 2:
-                    op.verVuelos();
-                    break;
-                case 3:
-                    System.out.print("Número de vuelo a eliminar: ");
-                    op.eliminarVuelo();
-                    break;
-                case 4:
-                    op.actualizarVuelo();
-                    break;
-                case 5:
-                    System.out.println("VOLVIENDO AL MENÚ PRINCIPAL ........");
-                    break;
-                default:
-                    System.out.println("Opción no válida. Intentar nuevamente");
-                    break;
+    void principal() {
+        while (true) {
+            System.out.println("\n1. Vuelos   2. Clientes   3. Ventas   4. Salir");
+            switch (entrada.entero("Opción: ", 1, 4)) {
+                case 1 -> vuelos();
+                case 2 -> clientes();
+                case 3 -> ventas();
+                case 4 -> { return; }
+                default -> throw new AssertionError();
             }
-        } while (opV != 5);
+        }
     }
-    // MENÚ - CLIENTES
-    private static void menuClientes() {
-        int opC;
-        do {
-            System.out.println("\n=====================================");
-            System.out.println("--------------- CLIENTES --------------");
-            System.out.println("========================================v");
-            System.out.println("1. Crear");
-            System.out.println("2. Ver");
-            System.out.println("3. Eliminar");
-            System.out.println("4. Actualizar");
-            System.out.println("5. Volver");
-            System.out.println("  MAIN MENU SELECTION  - CLIENTES |1-5|: ");
-            opC = JK.entero();
 
-            switch (opC) {
-                case 1:
-                    op.crearCliente();
-                    break;
-                case 2:
-                    op.verCliente();
-                    break;
-                case 3:
-                    op.eliminarCliente();
-                    break;
-                case 4:
-                    op.actualizarCliente();
-                    break;
-                 case 5:
-                     System.out.println("VOLVIENDO AL MENÚ PRINCIPAL ........");
-                    break;
-                default:
-                    System.out.println("Opción no válida. Intentar nuevamente");
-                    break;
+    private void vuelos() {
+        while (true) {
+            System.out.println("\nVuelos | 1. Crear   2. Ver   3. Eliminar   4. Actualizar   5. Volver");
+            int opcion = entrada.entero("Opción: ", 1, 5);
+            if (opcion == 5) {
+                return;
             }
-        } while (opC != 5);
-    }
-    //MENÚ - VENTAS
-    private static void menuVentas() {
-        int opCV;
-        do {
-            System.out.println("\n============================================");
-            System.out.println("------------------- VENTAS -----------------");
-            System.out.println("=============================================");
-            System.out.println("1. Crear");
-            System.out.println("2. Ver");
-            System.out.println("3. Volver");
-            System.out.println("  MAIN MENU SELECTION - VENTAS  |1-3|: ");
-            opCV = JK.entero();
-
-            switch (opCV) {
-                case 1:
-                    op.generarVenta();
-                    break;
-                case 2:
-                    op.verVenta();
-                    break;
-                case 3:
-                    System.out.println("VOLVIENDO AL MENÚ PRINCIPAL ......");
-                    break;
-                default:
-                    System.out.println("Opción no válida. Intentar nuevamente");
-                    break;
-
+            try {
+                switch (opcion) {
+                    case 1, 4 -> {
+                        if (opcion == 1) {
+                            int cantidad = entrada.entero("Vuelos a registrar: ", 1, Integer.MAX_VALUE);
+                            for (int i = 0; i < cantidad; i++) {
+                                System.out.println("Vuelo " + (i + 1) + " de " + cantidad);
+                                registrarVuelo(false);
+                            }
+                        } else {
+                            registrarVuelo(true);
+                        }
+                    }
+                    case 2 -> operaciones.listarVuelos();
+                    case 3 -> {
+                        operaciones.eliminarVuelo(entrada.linea("Código de vuelo: "));
+                        System.out.println("Vuelo eliminado.");
+                    }
+                    default -> throw new AssertionError();
+                }
+            } catch (IOException | IllegalArgumentException e) {
+                error(e);
             }
-        } while (opCV != 3);
+        }
     }
 
+    private void registrarVuelo(boolean actualizar) throws IOException {
+        String numero = entrada.linea("Código de vuelo: ");
+        if (actualizar) {
+            operaciones.vuelo(numero);
+        }
+        String origen = entrada.linea("Origen: ");
+        String destino = entrada.linea("Destino: ");
+        var precio = entrada.precio("Precio por asiento: ");
+        int capacidad = entrada.entero("Capacidad total: ", 1, Integer.MAX_VALUE);
+        operaciones.guardarVuelo(new Vuelos(numero, origen, destino, precio, capacidad), actualizar);
+        System.out.println("Vuelo guardado.");
+    }
+
+    private void clientes() {
+        while (true) {
+            System.out.println("\nClientes | 1. Crear   2. Ver   3. Eliminar   4. Actualizar   5. Volver");
+            int opcion = entrada.entero("Opción: ", 1, 5);
+            if (opcion == 5) {
+                return;
+            }
+            try {
+                switch (opcion) {
+                    case 1, 4 -> {
+                        if (opcion == 1) {
+                            int cantidad = entrada.entero("Clientes a registrar: ", 1, Integer.MAX_VALUE);
+                            for (int i = 0; i < cantidad; i++) {
+                                System.out.println("Cliente " + (i + 1) + " de " + cantidad);
+                                registrarCliente(false);
+                            }
+                        } else {
+                            registrarCliente(true);
+                        }
+                    }
+                    case 2 -> operaciones.listarClientes();
+                    case 3 -> {
+                        operaciones.eliminarCliente(entrada.linea("DNI: "));
+                        System.out.println("Cliente eliminado.");
+                    }
+                    default -> throw new AssertionError();
+                }
+            } catch (IOException | IllegalArgumentException e) {
+                error(e);
+            }
+        }
+    }
+
+    private void registrarCliente(boolean actualizar) throws IOException {
+        String dni = entrada.linea("DNI: ").strip();
+        if (actualizar) {
+            operaciones.cliente(dni);
+        }
+        String nombre = entrada.linea("Nombre: ");
+        String apellidos = entrada.linea("Apellidos: ");
+        String direccion = entrada.linea("Dirección: ");
+        operaciones.guardarCliente(new Clientes(dni, nombre, apellidos, direccion), actualizar);
+        System.out.println("Cliente guardado.");
+    }
+
+    private void ventas() {
+        while (true) {
+            System.out.println("\nVentas | 1. Crear   2. Historial   3. Volver   4. Anular   5. Exportar boletas   6. Resumen");
+            switch (entrada.entero("Opción: ", 1, 6)) {
+                case 1 -> {
+                    try {
+                        String dni = operaciones.cliente(entrada.linea("DNI del cliente: ")).dni();
+                        var vuelo = operaciones.vuelo(entrada.linea("Código de vuelo: "));
+                        int disponibles = (int) operaciones.disponibles(vuelo);
+                        if (disponibles == 0) {
+                            System.out.println("No quedan asientos disponibles.");
+                            continue;
+                        }
+                        int cantidad = entrada.entero("Cantidad de boletos: ", 1, disponibles);
+                        String numero = entrada.linea("Número de venta: ");
+                        var venta = operaciones.vender(numero, dni, vuelo.numero(), cantidad);
+                        System.out.println("Venta registrada.\n" + venta.boleta());
+                    } catch (IOException | IllegalArgumentException e) {
+                        error(e);
+                    }
+                }
+                case 2 -> {
+                    String historial = operaciones.historial();
+                    System.out.println(historial.isBlank() ? "No hay boletas registradas." : historial);
+                }
+                case 3 -> { return; }
+                case 4 -> {
+                    try {
+                        String numero = entrada.linea("Número de venta: ");
+                        if (entrada.linea("¿Confirmar anulación? [s/N]: ").strip().equalsIgnoreCase("s")) {
+                            operaciones.anular(numero);
+                            System.out.println("Venta anulada. Asientos liberados.");
+                        }
+                    } catch (IOException | IllegalArgumentException e) {
+                        error(e);
+                    }
+                }
+                case 5 -> {
+                    try {
+                        System.out.println("Boletas exportadas a " + operaciones.exportar());
+                    } catch (IOException e) {
+                        error(e);
+                    }
+                }
+                case 6 -> operaciones.resumen();
+                default -> throw new AssertionError();
+            }
+        }
+    }
+
+    private static void error(Exception e) {
+        System.out.println("No se pudo completar la operación. " + e.getMessage());
+    }
 }

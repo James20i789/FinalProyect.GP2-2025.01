@@ -1,55 +1,40 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package MODEL;
 
-/**
- *
- * @JK James Rios
- */
-public class Vuelos {
-    String numeroVuelo, origen, destino;
-    double costo;
-    int asientosDisponibles;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.Locale;
 
-    public Vuelos(String numeroVuelo, String origen, String destino, double costo, int asientosDisponibles) {
-        this.numeroVuelo = numeroVuelo;
-        this.origen = origen;
-        this.destino = destino;
-        this.costo = costo;
-        this.asientosDisponibles = asientosDisponibles;
-    }
-    //MÉTODOS DE MANIPULACIÓN DE LA CLASE. Sirve para obtener datos de la clase    
-    public String getNumeroVuelo() {
-        return numeroVuelo;
+public record Vuelos(String numero, String origen, String destino, BigDecimal precio, int capacidad) {
+    public Vuelos {
+        numero = codigo(numero);
+        origen = texto(origen);
+        destino = texto(destino);
+        if (origen.equalsIgnoreCase(destino)) {
+            throw new IllegalArgumentException("El origen y el destino deben ser distintos.");
+        }
+        if (precio.signum() <= 0 || precio.scale() < 0 || precio.scale() > 2 || precio.precision() - precio.scale() > 10 || capacidad <= 0) {
+            throw new IllegalArgumentException("Indique un precio positivo de hasta dos decimales y una capacidad positiva.");
+        }
+        precio = precio.setScale(2, RoundingMode.UNNECESSARY);
     }
 
-    public String getOrigen() {
-        return origen;
+    public static String texto(String valor) {
+        return texto(valor, 200);
     }
 
-    public String getDestino() {
-        return destino;
+    static String texto(String valor, int maximo) {
+        String limpio = valor.strip();
+        if (limpio.isEmpty() || limpio.length() > maximo || limpio.chars().anyMatch(Character::isISOControl)) {
+            throw new IllegalArgumentException("Ingrese texto válido de hasta " + maximo + " caracteres.");
+        }
+        return limpio;
     }
 
-    public double getCosto() {
-        return costo;
-    }
-
-    public int getAsientosDisponibles() {
-        return asientosDisponibles;
-    }
-    
-    public void venderAsiento() {
-        if (asientosDisponibles > 0) asientosDisponibles--;
-    }
-    
-    @Override
-    public String toString() {
-        return "Vuelo: " + numeroVuelo + " | Origen: " + origen + " | Destino: " + destino +
-               " | Costo: " + costo + " | Asientos: " + asientosDisponibles;
+    public static String codigo(String valor) {
+        String limpio = texto(valor).toUpperCase(Locale.ROOT);
+        if (!limpio.matches("[A-Z0-9][A-Z0-9_-]{0,29}")) {
+            throw new IllegalArgumentException("Use de 1 a 30 letras, dígitos, guiones o guiones bajos para el código.");
+        }
+        return limpio;
     }
 }
-  
-
