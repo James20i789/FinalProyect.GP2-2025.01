@@ -2,6 +2,14 @@
 
 Aplicación de consola para una agencia de vuelos. Permite registrar clientes y vuelos, vender varios boletos en una operación, consultar disponibilidad, anular ventas y exportar boletas. Está pensada para una persona operando una carpeta de datos local.
 
+## Hecho por
+
+**© James Rios** · [@James20i789 en GitHub](https://github.com/James20i789)
+
+Programador en desarrollo.
+
+[Instagram](https://www.instagram.com/jamechouu.rs__/) · [Facebook](https://web.facebook.com/james.alfredo.3979489/)
+
 ## Ejecutar
 
 Requiere **JDK 21** y **Apache Ant 1.10.15** o una versión posterior compatible con Java 21. También puedes abrir el proyecto Ant existente en NetBeans y seleccionar el JDK 21.
